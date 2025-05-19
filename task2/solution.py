@@ -10,34 +10,46 @@ import string
 ALL_LETTERS = (list(string.ascii_uppercase) + [chr(i) for i in range(1040, 1072)])
 
 
-async def make_requests() -> None:
+async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool = False, write_zero: bool = True) -> None:
+    """Записывает количество животных на каждую букву алфавита на русскоязычной википедии.
+
+    Args:
+        output_file: Файл, в которой будет записан результат.
+        ordered: True - записывать буквы в алфавитном порядке.
+            False - записывать буквы в порядке их парсинга (так быстрее).
+        write_zero: True - записывать буквы число которых равно 0.
+            False - записывать только те буквы, по которым есть более одного животного.
+    """
+    if ordered:
+        ordered_results = []
     async with ClientSession() as session:
         to_do = [count_one_letter(session, letter)
                  for letter in sorted(ALL_LETTERS)]
         to_do_iter = asyncio.as_completed(to_do)
         to_do_iter = tqdm.tqdm(to_do_iter, total=len(ALL_LETTERS))
         
-        async with aiofiles.open("beasts.csv", mode="w", encoding="utf-8") as file:
-            for coro in to_do_iter: 
-                try:
-                    letter, qty = await coro
-                    await file.write(f'{letter}, {qty}\n')
-                except ClientError as exc:
-                    break
+        if not ordered:
+            async with aiofiles.open(output_file, mode="w", encoding="utf-8") as file:
+                for coro in to_do_iter:
+                    try:
+                        letter, qty = await coro
+                        await write_result(file, letter, qty, write_zero)
+                    except ClientError as exc:
+                        break
+        if ordered:
+            for coro in to_do_iter:
+                ordered_results.append(await coro)
+    if ordered:
+        async with aiofiles.open(output_file, mode="w", encoding="utf-8") as file:
+            for res in sorted(ordered_results, key=lambda x: x[0]):
+                letter, qty = res
+                await write_result(file, letter, qty, write_zero)
 
 
-                # if error:
-                #     status = DownloadStatus.ERROR 
-                #     if verbose:
-                #         url = str(error.request.url) 
-                #         cc = Path(url).stem.upper()  
-                #         print(f'{cc} error: {error_msg}')
-                # counter[status] += 1
-
-        # try:
-        #     asyncio.as_completed(*to_do, )
-        # except ClientError:
-        #     print("FAILED")
+async def write_result(file, letter, qty, write_zero: bool):
+    if not write_zero and not qty:
+        return
+    await file.write(f'{letter}, {qty}\n')
 
 
 async def count_one_letter(
@@ -72,12 +84,16 @@ async def count_one_letter(
         params["pagefrom"] = last_added_animal + ' '
 
 
-async def test_count(letter="А"):
-    async with ClientSession() as session:
-        print(await count_one_letter(session, "А"))
+async def run_tests():
+    for i in range(1, 16):
+        output_file = f"beasts{i}.csv"
+        print(f"Running test {i}, writing to {output_file}")
+        await write_animals_letters(output_file)
+        print(f"Finished test {i}")
 
 
 if __name__ == "__main__":
-    # asyncio.run(test_count("A"))
-    asyncio.run(make_requests())
-    
+    # ПРИМЕЧАНИЕ
+    # 1. Я не был уверен, нужно ли записывать данные алфавитном порядке, поэтому добавил в функцию флаг параметр `ordered`
+    # 2. Я не был уверен, нужно ли записывать буквы, по которым количество животных равно нулю, поэтому добавил флаг параметр `write_zero`
+    asyncio.run(write_animals_letters())
