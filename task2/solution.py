@@ -5,6 +5,8 @@ import tqdm
 from aiohttp import ClientSession, ClientError
 from bs4 import BeautifulSoup
 import string
+from aiohttp import ClientSession
+from bs4 import BeautifulSoup
 
 
 ALL_LETTERS = (list(string.ascii_uppercase) + [chr(i) for i in range(1040, 1072)])
@@ -12,10 +14,10 @@ ALL_LETTERS = (list(string.ascii_uppercase) + [chr(i) for i in range(1040, 1072)
 
 async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool = False, write_zero: bool = True) -> None:
     """Записывает количество животных на каждую букву алфавита на русскоязычной википедии.
-
+    
     Args:
         output_file: Файл, в которой будет записан результат.
-        ordered: True - записывать буквы в алфавитном порядке.
+        ordered: True - записывать буквы в алфавитном порядке. 
             False - записывать буквы в порядке их парсинга (так быстрее).
         write_zero: True - записывать буквы число которых равно 0.
             False - записывать только те буквы, по которым есть более одного животного.
@@ -23,7 +25,7 @@ async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool =
     if ordered:
         ordered_results = []
     async with ClientSession() as session:
-        to_do = [count_one_letter(session, letter)
+        to_do = [asyncio.create_task(count_one_letter(session, letter))
                  for letter in sorted(ALL_LETTERS)]
         to_do_iter = asyncio.as_completed(to_do)
         to_do_iter = tqdm.tqdm(to_do_iter, total=len(ALL_LETTERS))
@@ -35,7 +37,10 @@ async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool =
                         letter, qty = await coro
                         await write_result(file, letter, qty, write_zero)
                     except ClientError as exc:
-                        break
+                        for task in to_do:
+                            task.cancel()
+                        await asyncio.gather(*to_do, return_exceptions=True)
+                        raise exc
         if ordered:
             for coro in to_do_iter:
                 ordered_results.append(await coro)
@@ -46,7 +51,17 @@ async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool =
                 await write_result(file, letter, qty, write_zero)
 
 
-async def write_result(file, letter, qty, write_zero: bool):
+async def write_result(file, letter: str, qty: int, write_zero: bool):
+    """Записывает количество повторений буквы в файл.
+    
+    Args:
+        file: Файл для записи.
+        letter: Буква.
+        qty: Количество животных.
+        write_zero: True - записывать буквы, по которым `qty` = 0.
+            False - НЕ записывать буквы, по которым `qty` = 0.
+
+    """
     if not write_zero and not qty:
         return
     await file.write(f'{letter}, {qty}\n')
@@ -56,11 +71,20 @@ async def count_one_letter(
         session: ClientSession,
         letter: str,
     ) -> tuple[str, int]:
+    """Возвращает количество животных по одной букве.
+    
+    Args:
+        session: Сессия для запросов.
+        letter: Буква, по которой требуется получить кол-во животных.
+    
+    Returns:
+        буква, количество животных
+    """
     params = dict(title= "Категория:Животные_по_алфавиту", 
                   pagefrom=letter)
     counter = 0
     while True:
-        async with session.get("https://ru.wikipedia.org/w/index.php", params=params) as resp:
+        async with session.get("https://ru.wikipedia.org/w/index.php", params=params, timeout=10) as resp:
             html = await resp.text()
 
         soup = BeautifulSoup(html, 'html.parser')
