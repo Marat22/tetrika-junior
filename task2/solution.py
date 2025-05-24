@@ -1,22 +1,22 @@
 import asyncio
-import aiohttp
 import aiofiles
+import os
+import string
 import tqdm
+
 from aiohttp import ClientSession, ClientError
 from bs4 import BeautifulSoup
-import string
-from aiohttp import ClientSession
-from bs4 import BeautifulSoup
+from pathlib import Path
 
 
 ALL_LETTERS = (list(string.ascii_uppercase) + [chr(i) for i in range(1040, 1072)])
 
 
-async def write_animals_letters(output_file: str = "beasts.csv", ordered: bool = False, write_zero: bool = True) -> None:
+async def write_animals_letters(output_file: Path, ordered: bool = False, write_zero: bool = True) -> None:
     """Записывает количество животных на каждую букву алфавита на русскоязычной википедии.
     
     Args:
-        output_file: Файл, в которой будет записан результат.
+        output_file: Путь к файлу, в которой будет записан результат.
         ordered: True - записывать буквы в алфавитном порядке. 
             False - записывать буквы в порядке их парсинга (так быстрее).
         write_zero: True - записывать буквы число которых равно 0.
@@ -108,16 +108,12 @@ async def count_one_letter(
         params["pagefrom"] = last_added_animal + ' '
 
 
-async def run_tests():
-    for i in range(1, 16):
-        output_file = f"beasts{i}.csv"
-        print(f"Running test {i}, writing to {output_file}")
-        await write_animals_letters(output_file)
-        print(f"Finished test {i}")
-
-
 if __name__ == "__main__":
     # ПРИМЕЧАНИЕ
     # 1. Я не был уверен, нужно ли записывать данные алфавитном порядке, поэтому добавил в функцию флаг параметр `ordered`
     # 2. Я не был уверен, нужно ли записывать буквы, по которым количество животных равно нулю, поэтому добавил флаг параметр `write_zero`
-    asyncio.run(write_animals_letters())
+    asyncio.run(
+        write_animals_letters(
+            output_file=Path(os.path.realpath(__file__)) / "beasts.csv"
+        )
+    )

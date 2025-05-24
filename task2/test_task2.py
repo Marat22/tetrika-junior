@@ -2,7 +2,11 @@ from aiohttp import ClientSession
 import unittest
 from unittest.mock import AsyncMock
 from aiohttp import ClientSession
-from solution import count_one_letter, write_animals_letters
+
+try:
+    from solution import count_one_letter
+except ModuleNotFoundError:
+    from task2.solution import count_one_letter
 
 
 class TestCountOneLetter(unittest.IsolatedAsyncioTestCase):
@@ -81,7 +85,6 @@ class TestCountOneLetter(unittest.IsolatedAsyncioTestCase):
         
     async def test_count_one_letter_no_animals(self):
         """Проверяет случай, когда нету животных на заданную букву."""
-        # Мокаем ответ без животных на эту букву
         mock_response = """
             <div class="mw-category mw-category-columns">
                 <li>Bear</li>
