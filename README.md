@@ -3,9 +3,9 @@
 ```bash
 git clone https://github.com/Marat22/tetrika-junior.git
 cd tetrika-junior
-python3 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
-python3 -m pip install -r requirements.txt
+python3.11 -m pip install -r requirements.txt
 ```
 - Windows
 ```cmd
