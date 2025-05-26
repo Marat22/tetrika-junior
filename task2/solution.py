@@ -114,6 +114,7 @@ if __name__ == "__main__":
     # 2. Я не был уверен, нужно ли записывать буквы, по которым количество животных равно нулю, поэтому добавил флаг параметр `write_zero`
     asyncio.run(
         write_animals_letters(
-            output_file=Path(os.path.realpath(__file__)) / "beasts.csv"
+            output_file=Path(os.path.realpath(__file__)).parent / "beasts.csv",
+            ordered=True, write_zero=False
         )
     )
